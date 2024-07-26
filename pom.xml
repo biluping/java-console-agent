@@ -5,13 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.myboy</groupId>
-    <artifactId>java-console</artifactId>
-    <version>jdk-1.8</version>
+    <artifactId>java-console-agent</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>console-boot</module>
+        <module>console-core</module>
+        <module>console-common</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <revision>1.0.0</revision>
     </properties>
 
     <dependencies>
@@ -68,34 +75,39 @@
     </dependencies>
 
     <build>
+        <finalName>java-console-agent</finalName>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
-                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.myboy.ConsoleApplication</mainClass>
+                                </manifest>
+                                <manifestEntries>
+                                    <Premain-Class>com.myboy.agent.JavaConsoleAgent</Premain-Class>
+                                    <Agent-Class>com.myboy.agent.JavaConsoleAgent</Agent-Class>
+                                    <Can-Redefine-Classes>true</Can-Redefine-Classes>
+                                    <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                                    <Specification-Title>${project.name}</Specification-Title>
+                                    <Specification-Version>${project.version}</Specification-Version>
+                                    <Implementation-Title>${project.name}</Implementation-Title>
+                                    <Implementation-Version>${project.version}</Implementation-Version>
+                                </manifestEntries>
+                            </archive>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.myboy.ConsoleApplication</mainClass>
-                        </manifest>
-                        <manifestEntries>
-                            <Menifest-Version>1.0</Menifest-Version>
-                            <Agent-Class>com.myboy.agent.JavaConsoleAgent</Agent-Class>
-                            <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                            <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                        </manifestEntries>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-
-                </configuration>
             </plugin>
         </plugins>
     </build>

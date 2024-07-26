@@ -47,6 +47,7 @@ public class JavaConsoleAgent {
     }
 
     public static void agentmain(String args, Instrumentation inst) {
+        System.out.println(ClassLoader.getSystemClassLoader());
         if (instrumentation != null) {
             System.out.println("Already attached before");
             return;
