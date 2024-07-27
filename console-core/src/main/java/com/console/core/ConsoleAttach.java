@@ -3,7 +3,6 @@ package com.console.core;
 import com.console.common.AnsiLog;
 import com.console.common.JavaVersionUtils;
 import com.sun.tools.attach.AgentLoadException;
-import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 
 import java.io.IOException;
@@ -52,6 +51,7 @@ public class ConsoleAttach {
         }  finally {
             if (null != virtualMachine) {
                 virtualMachine.detach();
+                AnsiLog.info("attach finished");
             }
         }
 

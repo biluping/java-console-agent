@@ -1,90 +1,68 @@
 package com.console.agent;
 
-import cn.hutool.core.exceptions.ExceptionUtil;
-import cn.hutool.core.thread.ThreadUtil;
-import com.console.agent.domain.ExecAO;
-import com.liubs.findinstances.jvmti.InstancesOfClass;
-import groovy.lang.Binding;
-import groovy.lang.Closure;
-import groovy.lang.GroovyShell;
-import io.javalin.Javalin;
-import io.javalin.http.Context;
-
+import java.io.File;
+import java.io.PrintStream;
 import java.lang.instrument.Instrumentation;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.net.URL;
 
 public class JavaConsoleAgent {
 
-    private static final Map<String, Class<?>> classMap = new HashMap<>();
-    private static Instrumentation instrumentation;
-    private static final Pattern pattern = Pattern.compile("\\s*def\\s+(\\w+)\\s*=\\s*(.*)");
-    private static Binding binding = null;
-    private static GroovyShell groovyShell = null;
-    private static Javalin app = null;
+    private static Instrumentation instrumentationCache;
+    private static volatile ClassLoader consoleClassLoader;
+    private static final File JAVA_CONSOLE_LIB_DIR = new File(System.getProperty("user.home") + File.separator + ".java-console" + File.separator + "lib");
+    private static final PrintStream ps = System.err;
 
-    private static void initGroovyShell() {
-        try {
-            // 定义一个函数
-            Closure<Object[]> getFunc = new Closure<Object[]>(null) {
-                public Object[] doCall(String clazzName) {
-                    Class<?> clazz = classMap.get(clazzName);
-                    if (clazz == null) {
-                        return new Object[0];
-                    }
-                    return InstancesOfClass.getInstances(clazz);
-                }
-            };
-            binding = new Binding();
-            binding.setVariable("get", getFunc);
-            groovyShell = new GroovyShell(binding);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    public static void agentmain(String args, Instrumentation inst) {
-        System.out.println(ClassLoader.getSystemClassLoader());
-        if (instrumentation != null) {
-            System.out.println("Already attached before");
+    public static void agentmain(String args, Instrumentation instrumentation) throws Exception {
+        if (instrumentationCache != null) {
+            ps.println("JavaConsoleAgent agent has been attached before");
+            ps.flush();
             return;
         }
-        for (Class<?> clazz : inst.getAllLoadedClasses()) {
-            classMap.put(clazz.getName(), clazz);
+
+        File consoleCoreJarFile = new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar");
+        if (!consoleCoreJarFile.exists()) {
+            ps.println("Can not find java-console-core.jar file from agent jar directory: " + JAVA_CONSOLE_LIB_DIR.getAbsolutePath());
+            return;
         }
-        instrumentation = inst;
-        initGroovyShell();
-        app = Javalin.create()
-                .post("/", JavaConsoleAgent::exec)
-                .get("/quit", ctx -> new Thread(() -> {
-                    ThreadUtil.sleep(1, TimeUnit.SECONDS);
-                    app.stop();
-                    initGroovyShell();
-                    instrumentation = null;
-                }).start()).start(7070);
+
+        Thread bindingThread = getStartServerThread(consoleCoreJarFile, instrumentation);
+        bindingThread.start();
+        bindingThread.join();
+
     }
 
-    private static void exec(Context context) {
-        ExecAO execAO = context.bodyAsClass(ExecAO.class);
-        System.out.println("script: " + execAO.getScript());
-        Matcher matcher = pattern.matcher(execAO.getScript());
+    /**
+     * 获取开启 server 的线程
+     */
+    private static Thread getStartServerThread(File consoleCoreJarFile, Instrumentation instrumentation) throws Exception {
+        ClassLoader consoleClassloader = getConsoleClassLoader(consoleCoreJarFile);
 
-        try {
-            if (matcher.find() && matcher.groupCount() == 2) {
-                binding.setVariable(matcher.group(1), groovyShell.evaluate(matcher.group(2)));
-                System.out.println("add variable: " + matcher.group(1));
-            } else {
-                Object eval = groovyShell.evaluate(execAO.getScript());
-                if (eval != null) {
-                    context.result(eval.toString());
-                }
+        Thread bindingThread = new Thread(() -> {
+            try {
+                Class<?> serverClass = consoleClassloader.loadClass("com.console.core.server.ConsoleServer");
+                System.out.println(serverClass.getClassLoader());
+                serverClass.getMethod("start", Instrumentation.class).invoke(null, instrumentation);
+                ps.println("console server already bind.");
+                instrumentationCache = instrumentation;
+            } catch (Throwable throwable) {
+                throwable.printStackTrace(ps);
             }
-        } catch (Exception e) {
-            context.result(ExceptionUtil.stacktraceToString(e));
+        });
+
+        bindingThread.setName("console-binding-thread");
+        return bindingThread;
+    }
+
+    /**
+     * 获取类加载器，保证单例，多次 attach 不会重复创建
+     */
+    private static ClassLoader getConsoleClassLoader(File consoleCoreJarFile) throws Exception {
+        if (consoleClassLoader != null) {
+            return consoleClassLoader;
         }
+        consoleClassLoader = new ConsoleClassloader(new URL[]{consoleCoreJarFile.toURI().toURL()});
+        return consoleClassLoader;
     }
 
 }
