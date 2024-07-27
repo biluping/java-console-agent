@@ -12,6 +12,7 @@
         <module>console-boot</module>
         <module>console-core</module>
         <module>console-common</module>
+        <module>console-agent</module>
     </modules>
 
     <properties>
@@ -64,52 +65,9 @@
             <version>2.1.0-alpha1</version>
         </dependency>
 
-        <!-- for com.sun.tools.attach.VirtualMachine api -->
-        <dependency>
-            <groupId>com.github.olivergondza</groupId>
-            <artifactId>maven-jdk-tools-wrapper</artifactId>
-            <version>0.1</version>
-            <scope>provided</scope>
-            <optional>true</optional>
-        </dependency>
+
     </dependencies>
 
-    <build>
-        <finalName>java-console-agent</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <mainClass>com.myboy.ConsoleApplication</mainClass>
-                                </manifest>
-                                <manifestEntries>
-                                    <Premain-Class>com.myboy.agent.JavaConsoleAgent</Premain-Class>
-                                    <Agent-Class>com.myboy.agent.JavaConsoleAgent</Agent-Class>
-                                    <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                                    <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                                    <Specification-Title>${project.name}</Specification-Title>
-                                    <Specification-Version>${project.version}</Specification-Version>
-                                    <Implementation-Title>${project.name}</Implementation-Title>
-                                    <Implementation-Version>${project.version}</Implementation-Version>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+
 
 </project>
