@@ -87,8 +87,12 @@ public class Bootstrap {
 
             Scanner scanner = new Scanner(System.in);
             while (true) {
+                System.out.print("[console]$ ");
                 String command = scanner.nextLine();
                 printStream.print(command);
+                if ("exit".equals(command) || "quit".equals(command)) {
+                    break;
+                }
             }
         } catch (IOException e) {
             e.printStackTrace(System.err);
