@@ -1,14 +1,13 @@
 package com.console.boot;
 
-import java.io.File;
-import java.io.InputStream;
-import java.nio.file.CopyOption;
+import java.io.*;
+import java.net.Socket;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
+import java.util.Scanner;
 
 public class Bootstrap {
 
@@ -43,11 +42,11 @@ public class Bootstrap {
             target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-agent.jar");
             Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         long pid = -1;
         try {
             pid = ProcessUtils.select(false);
@@ -66,6 +65,34 @@ public class Bootstrap {
         attachArgs.add("" + pid);
         attachArgs.add(JAVA_CONSOLE_LIB_DIR.getAbsolutePath() + File.separator + "java-console-agent.jar");
         ProcessUtils.startConsoleCore(pid, attachArgs);
+
+        // 客户端连接，发送命令
+        try (Socket socket = new Socket("127.0.0.1", 10101);
+             PrintStream printStream = new PrintStream(socket.getOutputStream(), true);
+             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+            new Thread(() -> {
+                try {
+                    char[] buffer = new char[1024];
+                    int len;
+                    while ((len = bufferedReader.read(buffer)) != -1) {
+                        String data = new String(buffer, 0, len);
+                        System.out.println(data);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+
+            }).start();
+
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+                String command = scanner.nextLine();
+                printStream.print(command);
+            }
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
 
     }
 }
