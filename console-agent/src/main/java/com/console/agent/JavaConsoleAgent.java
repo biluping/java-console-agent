@@ -7,19 +7,11 @@ import java.net.URL;
 
 public class JavaConsoleAgent {
 
-    private static Instrumentation instrumentationCache;
     private static volatile ClassLoader consoleClassLoader;
     private static final File JAVA_CONSOLE_LIB_DIR = new File(System.getProperty("user.home") + File.separator + ".java-console" + File.separator + "lib");
     private static final PrintStream ps = System.err;
 
-
     public static void agentmain(String args, Instrumentation instrumentation) throws Exception {
-        if (instrumentationCache != null) {
-            ps.println("JavaConsoleAgent agent has been attached before");
-            ps.flush();
-            return;
-        }
-
         File consoleCoreJarFile = new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar");
         if (!consoleCoreJarFile.exists()) {
             ps.println("Can not find java-console-core.jar file from agent jar directory: " + JAVA_CONSOLE_LIB_DIR.getAbsolutePath());
@@ -44,7 +36,6 @@ public class JavaConsoleAgent {
                 Class<?> serverClass = consoleClassloader.loadClass("com.console.core.server.ConsoleServer");
                 serverClass.getMethod("start", Instrumentation.class).invoke(null, instrumentation);
                 ps.println("console server start success");
-                instrumentationCache = instrumentation;
             } catch (Throwable throwable) {
                 throwable.printStackTrace(ps);
             }

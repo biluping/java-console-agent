@@ -9,7 +9,12 @@ public class ConsoleServer {
 
     private static ServerSocket serverSocket;
 
-    public static void start(Instrumentation instrumentation) {
+    public synchronized static void start(Instrumentation instrumentation) {
+
+        if (serverSocket != null) {
+            return;
+        }
+
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(10101);
@@ -26,7 +31,13 @@ public class ConsoleServer {
                     int len;
                     while ((len = bufferedReader.read(buffer)) != -1) {
                         String command = new String(buffer, 0, len);
-                        System.out.println(command);
+                        if ("exit".equals(command) || "quit".equals(command)) {
+                            clientSocket.close();
+                            serverSocket.close();
+                            serverSocket = null;
+                            System.err.println("client exit");
+                            break;
+                        }
                         printStream.print("ok");
                     }
                 }

@@ -12,6 +12,7 @@ import java.util.Scanner;
 public class Bootstrap {
 
     private static final File JAVA_CONSOLE_LIB_DIR = new File(System.getProperty("user.home") + File.separator + ".java-console" + File.separator + "lib");
+
     static {
         // agent、core jar 文件复制到 ～/.java-console/lib 目录下
         JAVA_CONSOLE_LIB_DIR.mkdirs();
@@ -36,7 +37,7 @@ public class Bootstrap {
         try {
             File file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-core/target/java-console-core-jar-with-dependencies.jar");
             File target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar");
-            Files.copy(file.toPath(), target.toPath(),  StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
             file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-agent/target/java-console-agent-jar-with-dependencies.jar");
             target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-agent.jar");
@@ -46,7 +47,7 @@ public class Bootstrap {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         long pid = -1;
         try {
             pid = ProcessUtils.select(false);
@@ -59,7 +60,7 @@ public class Bootstrap {
             System.exit(1);
         }
 
-        List<String> attachArgs = new ArrayList<String>();
+        List<String> attachArgs = new ArrayList<>();
         attachArgs.add("-jar");
         attachArgs.add(new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar").getAbsolutePath());
         attachArgs.add("" + pid);
@@ -71,24 +72,17 @@ public class Bootstrap {
              PrintStream printStream = new PrintStream(socket.getOutputStream(), true);
              BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            new Thread(() -> {
-                try {
-                    char[] buffer = new char[1024];
-                    int len;
-                    while ((len = bufferedReader.read(buffer)) != -1) {
-                        String data = new String(buffer, 0, len);
-                        System.out.println(data);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace(System.err);
-                }
-
-            }).start();
-
             Scanner scanner = new Scanner(System.in);
             while (true) {
-                System.out.print("[console]$ ");
-                String command = scanner.nextLine();
+                char[] buffer = new char[1024];
+                int len = bufferedReader.read(buffer);
+                String data = new String(buffer, 0, len);
+                System.out.println(data);
+
+                String command;
+                do {
+                    System.out.print("[console]$ ");
+                } while ((command = scanner.nextLine()).isEmpty());
                 printStream.print(command);
                 if ("exit".equals(command) || "quit".equals(command)) {
                     break;
