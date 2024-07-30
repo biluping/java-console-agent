@@ -1,6 +1,5 @@
 package com.console.core.server;
 
-import com.console.core.command.Command;
 import com.console.core.command.OgnlCommand;
 
 import java.io.BufferedReader;
@@ -44,8 +43,8 @@ public class ConsoleServer {
                             System.err.println("client exit");
                             break;
                         }
-                        Command command = new OgnlCommand();
-                        String response = command.execute(expression, instrumentation);
+                        OgnlCommand ognlCommand = OgnlCommand.getInstance(instrumentation);
+                        String response = ognlCommand.exec(expression);
                         printStream.print(null == response ? "ok" : response);
                     }
                 }

@@ -32,7 +32,6 @@ public class JavaConsoleAgent {
 
         Thread bindingThread = new Thread(() -> {
             try {
-                Thread.currentThread().setContextClassLoader(consoleClassloader);
                 Class<?> serverClass = consoleClassloader.loadClass("com.console.core.server.ConsoleServer");
                 serverClass.getMethod("start", Instrumentation.class).invoke(null, instrumentation);
                 ps.println("console server start success");
