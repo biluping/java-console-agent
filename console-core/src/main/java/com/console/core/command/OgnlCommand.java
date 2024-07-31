@@ -4,6 +4,7 @@ import com.liubs.findinstances.jvmti.InstancesOfClass;
 import ognl.DefaultMemberAccess;
 import ognl.Ognl;
 import ognl.OgnlContext;
+import ognl.OgnlException;
 
 import java.lang.instrument.Instrumentation;
 import java.util.Arrays;
@@ -39,14 +40,9 @@ public class OgnlCommand {
                 });
     }
 
-    public String exec(String expression) {
-        try {
-            Object obj = Ognl.getValue(expression, context, map);
-            return obj == null ? null : obj.toString();
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
-            return null;
-        }
+    public String exec(String expression) throws OgnlException {
+        Object obj = Ognl.getValue(expression, context, map);
+        return obj == null ? null : obj.toString();
     }
 
 }

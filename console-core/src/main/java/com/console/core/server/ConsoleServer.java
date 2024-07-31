@@ -9,6 +9,8 @@ import java.io.PrintStream;
 import java.lang.instrument.Instrumentation;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConsoleServer {
 
@@ -27,6 +29,14 @@ public class ConsoleServer {
                 Socket clientSocket = serverSocket.accept();
                 System.err.println("Client connect success!");
 
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    try {
+                        if (serverSocket != null) {
+                            serverSocket.close();
+                        }
+                    } catch (IOException ignore) {}
+                }));
+
                 try (PrintStream printStream = new PrintStream(clientSocket.getOutputStream());
                      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
@@ -43,9 +53,22 @@ public class ConsoleServer {
                             System.err.println("client exit");
                             break;
                         }
+                        if ("help".equals(expression)) {
+                            List<String> list = new ArrayList<>();
+                            list.add("#spring: 获取 ApplicationContext 对象");
+                            list.add("put('aaa', 'bbb'): 存储变量和值");
+                            list.add("get('aaa'): 取出变量值");
+                            list.add("@java.lang.System@out.println('12345')");
+                            printStream.println(String.join("\n", list));
+                            continue;
+                        }
                         OgnlCommand ognlCommand = OgnlCommand.getInstance(instrumentation);
-                        String response = ognlCommand.exec(expression);
-                        printStream.print(null == response ? "ok" : response);
+                        try {
+                            String response = ognlCommand.exec(expression);
+                            printStream.print(null == response ? "ok" : response);
+                        } catch (Exception e) {
+                            e.printStackTrace(printStream);
+                        }
                     }
                 }
             } catch (IOException e) {
