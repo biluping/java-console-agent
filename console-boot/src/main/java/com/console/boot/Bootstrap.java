@@ -26,35 +26,43 @@ public class Bootstrap {
     static {
         // agent、core jar 文件复制到 ～/.java-console/lib 目录下
         JAVA_CONSOLE_LIB_DIR.mkdirs();
-        List<String> jarNameList = new ArrayList<>();
-        jarNameList.add("java-console-agent-jar-with-dependencies.jar");
-        jarNameList.add("java-console-core-jar-with-dependencies.jar");
 
-        for (String jarName : jarNameList) {
-            try(InputStream agentJarInputStream = Bootstrap.class.getResourceAsStream("/" + jarName)){
-                if (agentJarInputStream == null) {
-                    System.out.println("Resource not found: " + jarName);
+        String classPath = System.getProperty("java.class.path");
+        if (classPath.contains("idea_rt.jar")) {
+            try {
+                File file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-core/target/java-console-core-jar-with-dependencies.jar");
+                File target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar");
+                Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+                file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-agent/target/java-console-agent-jar-with-dependencies.jar");
+                target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-agent.jar");
+                Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
+        } else {
+            List<String> jarNameList = new ArrayList<>();
+            jarNameList.add("java-console-agent-jar-with-dependencies.jar");
+            jarNameList.add("java-console-core-jar-with-dependencies.jar");
+
+            for (String jarName : jarNameList) {
+                try(InputStream agentJarInputStream = Bootstrap.class.getResourceAsStream("/" + jarName)){
+                    if (agentJarInputStream == null) {
+                        System.out.println("Resource not found: " + jarName);
+                        System.exit(1);
+                    }
+                    Path targetPath = new File(JAVA_CONSOLE_LIB_DIR, jarName.replace("-jar-with-dependencies", "")).toPath();
+                    Files.copy(agentJarInputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception e) {
+                    System.out.println("Bootstrap.class.getResourceAsStream fail: " + e.getMessage());
                     System.exit(1);
                 }
-                Path targetPath = new File(JAVA_CONSOLE_LIB_DIR, jarName.replace("-jar-with-dependencies", "")).toPath();
-                Files.copy(agentJarInputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Exception e) {
-                System.out.println("Bootstrap.class.getResourceAsStream fail: " + e.getMessage());
-                System.exit(1);
             }
         }
 
-//        try {
-//            File file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-core/target/java-console-core-jar-with-dependencies.jar");
-//            File target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-core.jar");
-//            Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-//
-//            file = new File("/Users/rabbit/my/project/java/code_source/java-console-agent/console-agent/target/java-console-agent-jar-with-dependencies.jar");
-//            target = new File(JAVA_CONSOLE_LIB_DIR, "java-console-agent.jar");
-//            Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-//        } catch (Exception e) {
-//            e.printStackTrace(System.err);
-//        }
+
+
+
     }
 
     public static void main(String[] args) {
@@ -86,7 +94,7 @@ public class Bootstrap {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             // 创建自动补全器
-            Completer completer = new StringsCompleter("help", "#spring", "get('')", "put('', '')");
+            Completer completer = new StringsCompleter("help", "bean[]");
             Terminal terminal = TerminalBuilder.builder().system(true).build();
             LineReader lineReader = LineReaderBuilder.builder()
                     .terminal(terminal)
@@ -94,7 +102,7 @@ public class Bootstrap {
                     .history(new DefaultHistory())  // 设置历史记录
                     .build();
 
-            new Thread(()->{
+            new Thread(() -> {
                 while (true) {
                     try {
                         char[] buffer = new char[1024];
@@ -103,25 +111,24 @@ public class Bootstrap {
                             break;
                         }
                         String data = new String(buffer, 0, len);
-                        System.out.println(data);
+                        System.out.print(data);
                     } catch (Exception e) {
                         e.printStackTrace(System.err);
                     }
                 }
             }).start();
 
-            while (true) {
-                String expression;
-                try {
-                    while ((expression = lineReader.readLine("[console]$ ")).isEmpty()) {}
-                } catch (UserInterruptException e) {
-                    // ctrl+c 退出
-                    expression = "exit";
+            try {
+                while (true) {
+                    String expression = lineReader.readLine();
+                    printStream.println(expression);
+                    if ("exit".equals(expression.trim()) || "quit".equals(expression.trim())) {
+                        break;
+                    }
                 }
-                printStream.print(expression);
-                if ("exit".equals(expression) || "quit".equals(expression)) {
-                    break;
-                }
+            } catch (UserInterruptException e) {
+                // ctrl+c 退出
+                printStream.print("exit");
             }
         } catch (IOException e) {
             e.printStackTrace(System.err);

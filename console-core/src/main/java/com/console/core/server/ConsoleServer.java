@@ -25,50 +25,58 @@ public class ConsoleServer {
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(10101);
+                serverSocket.setReuseAddress(true);
                 System.err.println("Console Server is running on port 10101...");
                 Socket clientSocket = serverSocket.accept();
                 System.err.println("Client connect success!");
 
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                Thread hook = new Thread(() -> {
                     try {
                         if (serverSocket != null) {
                             serverSocket.close();
                         }
-                    } catch (IOException ignore) {}
-                }));
+                    } catch (IOException ignore) {
+                    }
+                });
+                Runtime.getRuntime().addShutdownHook(hook);
 
                 try (PrintStream printStream = new PrintStream(clientSocket.getOutputStream());
                      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
-                    printStream.print("connect successful");
+                    printStream.println("connect successful");
+                    printStream.print("[console]$ ");
 
                     char[] buffer = new char[1024];
                     int len;
                     while ((len = bufferedReader.read(buffer)) != -1) {
                         String expression = new String(buffer, 0, len).trim();
+                        if (expression.isEmpty()) {
+                            printStream.print("[console]$ ");
+                            continue;
+                        }
                         if ("exit".equals(expression) || "quit".equals(expression)) {
                             clientSocket.close();
                             serverSocket.close();
                             serverSocket = null;
+                            Runtime.getRuntime().removeShutdownHook(hook);
                             System.err.println("client exit");
                             break;
                         }
                         if ("help".equals(expression)) {
                             List<String> list = new ArrayList<>();
                             list.add("#spring: 获取 ApplicationContext 对象");
-                            list.add("put('aaa', 'bbb'): 存储变量和值");
-                            list.add("get('aaa'): 取出变量值");
+                            list.add("bean[myBean]");
+                            list.add("let aaa = 'bbb' : 存储变量和值");
+                            list.add("aaa: 取出变量值");
                             list.add("@java.lang.System@out.println('12345')");
                             printStream.println(String.join("\n", list));
+                            printStream.print("[console]$ ");
                             continue;
                         }
                         OgnlCommand ognlCommand = OgnlCommand.getInstance(instrumentation);
-                        try {
-                            String response = ognlCommand.exec(expression);
-                            printStream.print(null == response ? "ok" : response);
-                        } catch (Exception e) {
-                            e.printStackTrace(printStream);
-                        }
+                        String response = ognlCommand.exec(expression);
+                        printStream.println(null == response ? "ok" : response);
+                        printStream.print("[console]$ ");
                     }
                 }
             } catch (IOException e) {
